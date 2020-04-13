@@ -90,7 +90,7 @@ def index(request):
     # return JsonResponse(data)
 
     filename = '/home/totoro0098/PycharmProjects/OCR/OCR_Invocie/demoTemplate/templates/hr_phuong.pdf'
-    res = read_image(filename).split("\n")
+    res = read_image_ggCloudVison(filename)
     return JsonResponse(res, safe=False)
 
 #image to text GG Cloud Vision
@@ -100,7 +100,7 @@ from google.cloud import vision
 from google.cloud import storage
 from google.protobuf import json_format
 
-def read_image(path, bucket_name="cloud-vision-84893", language="en"):
+def read_image_ggCloudVison(path, bucket_name="cloud-vision-84893", language="en"):
 
     # Supported mime_types are: 'application/pdf' and 'image/tiff'
     mime_type = "application/pdf"
@@ -112,8 +112,7 @@ def read_image(path, bucket_name="cloud-vision-84893", language="en"):
     input_blob_uri = "gs://{}/{}".format(bucket_name, filename)
 
     # Upload file to gcloud if it doesn't exist yet
-    # storage_client = storage.Client()
-    storage_client = storage.Client.from_service_account_json('/home/totoro0098/Downloads/My First Project-e2c176806a9e.json')
+    storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
     if bucket.get_blob(filename) is None:
         blob = bucket.blob(filename)
