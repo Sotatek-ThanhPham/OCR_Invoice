@@ -9,11 +9,11 @@ sudo apt-get update && sudo apt-get install python-virtualenv python-pip build-e
 
 git clone https://github.com/Sotatek-ThanhPham/OCR_Invoice.git
 cd OCR_Invoice
-virtualenv -p python3 djangotut
+virtualenv -p python3 venv
 ```
 ```
-djangotut/bin/pip install django
-djangotut/bin/pip install -r requirements.txt
+venv/bin/pip install django
+venv/bin/pip install -r requirements.txt
 ```
 
 ## Run
