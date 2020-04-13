@@ -1,0 +1,20 @@
+information/PERSONAL DETAILS :
+  name:
+  phone:
+  address:
+  date-of-birth:
+  gender:
+
+SUMMARY
+
+skill/skills
+
+WORK EXPERIENCE/EXPERIENCE/EMPLOYMENT
+
+study/education
+
+personality
+
+AWARDS
+
+REFERENCES
