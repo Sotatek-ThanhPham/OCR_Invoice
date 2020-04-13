@@ -13,9 +13,6 @@ virtualenv -p python3 djangotut
 ```
 ```
 djangotut/bin/pip install django
-```
-or
-```
 djangotut/bin/pip install -r requirements.txt
 ```
 
