@@ -1,166 +1,46 @@
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.core import serializers
 import re
-
-TEMPLATE_CV = ["information",
-               "personal details",
-               "summary",
-               "skills",
-               "work experience",
-               "experience",
-               "employment",
-               "study",
-               "education",
-               "personality",
-               "awards",
-               "references",
-               "interests"]
-
-TEMPLATE_INFORMATION = ["information",
-                        "personal details"]
-
-TEMPLATE_SUMMARY = ["summary",
-                    "objective"]
-
-TEMPLATE_SKILLS = ["skill",
-                   "skills",
-                   "personality"]  # tinh cach : team-work
-
-TEMPLATE_EXPERIENCE = ["work experience,"
-                       "experience",
-                       "employment"]
-
-TEMPLATE_EDUCATION = ["study",
-                      "education"]
-
-TEMPLATE_AWARDS = ["awards"]
-
-TEMPLATE_REFERENCES = ["references"]
-
-TEMPLATE_INTERESTS = ["interests"]
-
-LIST_SKILLS_1 = ["Java", "C", "C++", "Scala"]  # update them
-LIST_SKILLS_2 = ["Communication", "Presentation", "Individual working", "Team-work"]
 
 
 # Create your views here.
 def index(request):
-    # if request.method == "POST" and request.FILES['file']:
-    # myfile = request.FILES['file']
-    # fs = FileSystemStorage()
-    # filename = fs.save(myfile.name, myfile)
-    # uploaded_file_url = fs.url(filename)
-    # filename = 'hr_phuong.pdf'
-    # data = read_pdf(filename).split("\n")
+    filename = 'OCR_Invocie/demoTemplate/templates/test_1.jpg'
+    res = detect_text(filename)
+    return JsonResponse(str(res), content_type="application/json", safe=False)
 
-    # temp = getTemp(data)
-    #
-    # res = {
-    #     'information': '',
-    #     'summary': '',
-    #     'skills': '',
-    #     'experience': '',
-    #     'education': '',
-    #     'awards': '',
-    #     'references': '',
-    #     'interests': ''
-    # }
-    # for num, i in enumerate(temp, start=0):
-    #     if num < len(temp) - 1:
-    #         end = temp[num + 1][1]
-    #     else:
-    #         end = len(temp) - 1
-    #     if i[0] == 'information':
-    #         res['information'] = getInfor(data, i[1], end)
-    #     if i[0] == 'skills':
-    #         res['skills'] = getSkills(data, i[1], end)
-    # fs.delete(filename)
-    # return JsonResponse(res)
-    # data = {
-    #     'information': '',
-    #     'summary': '',
-    #     'skills': '',
-    #     'experience': '',
-    #     'education': '',
-    #     'awards': '',
-    #     'references': '',
-    #     'interests': ''
-    # }
-    # return JsonResponse(data)
-
-    filename = '/home/totoro0098/PycharmProjects/OCR/OCR_Invocie/demoTemplate/templates/hr_phuong.pdf'
-    res = read_image_ggCloudVison(filename)
-    return JsonResponse(res, safe=False)
 
 #image to text GG Cloud Vision
 
-import os
 from google.cloud import vision
-from google.cloud import storage
-from google.protobuf import json_format
+import io
 
-def read_image_ggCloudVison(path, bucket_name="cloud-vision-84893", language="en"):
+def detect_text(path):
+    client = vision.ImageAnnotatorClient()
 
-    # Supported mime_types are: 'application/pdf' and 'image/tiff'
-    mime_type = "application/pdf"
+    with io.open(path, 'rb') as image_file:
+        content = image_file.read()
 
-    path_dir, filename = os.path.split(path)
-    result_blob_basename = filename.replace(".pdf", "").replace(".PDF", "")
-    result_blob_name = result_blob_basename + "/output-1-to-1.json"
-    result_blob_uri = "gs://{}/{}/".format(bucket_name, result_blob_basename)
-    input_blob_uri = "gs://{}/{}".format(bucket_name, filename)
+    image = vision.types.Image(content=content)
 
-    # Upload file to gcloud if it doesn't exist yet
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
-    if bucket.get_blob(filename) is None:
-        blob = bucket.blob(filename)
-        blob.upload_from_filename(path)
+    response = client.text_detection(image=image)
+    texts = response.text_annotations
 
-    # See if result already exists
-    # TODO: upload as hash, not filename
-    result_blob = bucket.get_blob(result_blob_name)
-    if result_blob is None:
-        # How many pages should be grouped into each json output file.
-        batch_size = 10
+    print('Texts:')
+    for text in texts:
+        print('\n"{}"'.format(text.description))
+        vertices = (['({},{})'.format(vertex.x, vertex.y)
+                    for vertex in text.bounding_poly.vertices])
+        print('bounds: {}'.format(','.join(vertices)))
 
-        client = vision.ImageAnnotatorClient()
-
-        feature = vision.types.Feature(
-            type=vision.enums.Feature.Type.DOCUMENT_TEXT_DETECTION
-        )
-
-        gcs_source = vision.types.GcsSource(uri=input_blob_uri)
-        input_config = vision.types.InputConfig(
-            gcs_source=gcs_source, mime_type=mime_type
-        )
-
-        gcs_destination = vision.types.GcsDestination(uri=result_blob_uri)
-        output_config = vision.types.OutputConfig(
-            gcs_destination=gcs_destination, batch_size=batch_size
-        )
-
-        async_request = vision.types.AsyncAnnotateFileRequest(
-            features=[feature], input_config=input_config, output_config=output_config
-        )
-
-        operation = client.async_batch_annotate_files(requests=[async_request])
-
-        print("Waiting for the operation to finish.")
-        operation.result(timeout=180)
-
-    # Get result after OCR is completed
-    result_blob = bucket.get_blob(result_blob_name)
-
-    json_string = result_blob.download_as_string()
-    response = json_format.Parse(json_string, vision.types.AnnotateFileResponse())
-
-    # The actual response for the first page of the input file.
-    first_page_response = response.responses[0]
-    annotation = first_page_response.full_text_annotation
-
-    return annotation.text.encode("utf-8")
+    if response.error.message:
+        raise Exception(
+            '{}\nFor more info on error messages, check: '
+            'https://cloud.google.com/apis/design/errors'.format(
+                response.error.message))
+    return format(texts[0].description)
 
 
 #PDF to text
